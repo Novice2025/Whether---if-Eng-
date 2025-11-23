@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Flashcards: Whether vs. If</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        .flashcard-container {
+            perspective: 1000px;
+            width: 100%;
+            max-width: 400px; /* Limiting size for better mobile focus */
+            height: 250px;
+            margin: auto;
+        }
+        .flashcard {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+            border-radius: 1rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+        .flashcard.flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            text-align: center;
+            border-radius: 1rem;
+            border: 3px solid;
+            cursor: pointer;
+        }
+        .card-front {
+            background-color: #ffffff; /* White background */
+            border-color: #0d9488; /* Teal 600 */
+        }
+        .card-back {
+            background-color: #0d9488; /* Teal 600 */
+            color: white;
+            transform: rotateY(180deg);
+            border-color: #ea580c; /* Orange 600 */
+        }
+        .card-text {
+            font-size: 1.25rem;
+            line-height: 1.6;
+        }
+        .navigation button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-teal-800">
+                Quick Memory: Whether vs. If
+            </h1>
+            <p class="text-gray-600 mt-2">
+                Click the card to reveal the answer. Use the navigation buttons to advance.
+            </p>
+            <p id="card-counter" class="text-lg font-semibold text-orange-600 mt-4">
+                Card 1 of 35
+            </p>
+        </header>
+
+        <!-- FLASHCARD COMPONENT -->
+        <div class="flashcard-container">
+            <div id="flashcard" class="flashcard">
+                <div id="card-front" class="card-face card-front shadow-lg">
+                    <p class="card-text text-gray-800 font-semibold"></p>
+                </div>
+                <div id="card-back" class="card-face card-back shadow-lg">
+                    <p class="card-text font-medium"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- NAVIGATION CONTROLS -->
+        <div class="navigation flex justify-center items-center gap-6 mt-12">
+            <button id="prev-btn" class="px-5 py-3 bg-gray-300 text-gray-800 font-bold rounded-full shadow-md hover:bg-gray-400 transition disabled:opacity-50">
+                &larr; Previous
+            </button>
+            <button id="flip-btn" class="px-8 py-4 bg-orange-600 text-white font-extrabold rounded-full shadow-xl hover:bg-orange-700 transition transform hover:scale-105">
+                Flip Card
+            </button>
+            <button id="next-btn" class="px-5 py-3 bg-teal-600 text-white font-bold rounded-full shadow-md hover:bg-teal-700 transition disabled:opacity-50">
+                Next &rarr;
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // Array of flashcards (35 total: 25 concept rules, 10 Ptg -> Eng exercises)
+        const flashcards = [
+            // ----------------------------------------------------
+            // 1. RULES AND CONCEPTS (Translated to English)
+            // ----------------------------------------------------
+            {
+                "front": "How is the Portuguese 'Se' translated in English?",
+                "back": "Into 'IF' (condition) and 'WHETHER' (doubt/alternative)."
+            },
+            {
+                "front": "Translation of 'Se' meaning CAUSE/EFFECT",
+                "back": "IF (E.g., Se você estudar, passa. / If you study, you pass.)"
+            },
+            {
+                "front": "Translation of 'Se' meaning DOUBT/CHOICE",
+                "back": "WHETHER (E.g., Não sei se ele vem. / I don't know whether he is coming.)"
+            },
+            {
+                "front": "The Golden Rule (Translation Technique)",
+                "back": "If you can logically add '... or not' to the phrase in Portuguese, use WHETHER."
+            },
+            {
+                "front": "IF Test: 'If I go (or not), I will call you.' Does it sound right?",
+                "back": "No. In conditional clauses, 'or not' makes no sense. Use IF: If I go, I will call you."
+            },
+            {
+                "front": "WHETHER Test: 'I want to know whether (or not) the plan works.' Does it sound right?",
+                "back": "Yes. There is an implicit doubt (it works or it doesn't). Use WHETHER: I want to know whether the plan works."
+            },
+            {
+                "front": "Formal Use of WHETHER (Mandatory, Rule 1)",
+                "back": "Immediately before 'or not'. (E.g., whether or not to go)"
+            },
+            {
+                "front": "Formal Use of WHETHER (Mandatory, Rule 2)",
+                "back": "After a PREPOSITION (E.g., about, of, on, at, for...). (E.g., We talked about whether to move.)"
+            },
+            {
+                "front": "Formal Use of WHETHER (Mandatory, Rule 3)",
+                "back": "Before an INFINITIVE (to + verb). (E.g., I wonder whether to accept.)"
+            },
+            {
+                "front": "Formal Use of WHETHER (Mandatory, Rule 4)",
+                "back": "When the doubt/alternative is the SUBJECT of the sentence. (E.g., Whether he comes is irrelevant.)"
+            },
+            {
+                "front": "Where are 'IF' and 'WHETHER' *both* acceptable?",
+                "back": "In noun clauses following verbs of doubt/question. (Informal use, E.g., I don't know if/whether he will come.)"
+            },
+            {
+                "front": "Example where 'IF' or 'WHETHER' are accepted",
+                "back": "Tell me if/whether you are ready. (Me diga se você está pronto.)"
+            },
+            {
+                "front": "Translate: 'Depende de se chover.' (Preposition + Doubt)",
+                "back": "It depends on WHETHER it rains. (WHETHER is mandatory after 'on')."
+            },
+            {
+                "front": "Translate: 'Estou decidindo se vou ou não.' (Infinitive + 'or not')",
+                "back": "I am deciding WHETHER to go or not. (WHETHER is mandatory before an infinitive)."
+            },
+            {
+                "front": "Which is the most formal and safest option for *any* doubt/choice?",
+                "back": "WHETHER. It is never wrong in contexts of uncertainty."
+            },
+            {
+                "front": "Advanced IF: 'Eu irei, mesmo se chover.'",
+                "back": "I will go, even if it rains. ('Even if' emphasizes the condition, keeping 'IF')."
+            },
+            {
+                "front": "Advanced WHETHER: Expressing explicit alternatives",
+                "back": "Whether we win or lose, we tried our best. ('Whether... or...' structure)."
+            },
+            {
+                "front": "Portuguese sentence: 'Não importa se você tem dinheiro ou não.' (Doubt)",
+                "back": "It doesn't matter WHETHER you have money or not."
+            },
+            {
+                "front": "Portuguese sentence: 'Se você tiver dinheiro, compre.' (Condition)",
+                "back": "If you have money, buy it. ('Or not' does not fit here)."
+            },
+            {
+                "front": "Common Mistake: Using 'IF' as the subject of the sentence",
+                "back": "If the team wins is the question. (INCORRECT. Use: Whether the team wins is the question.)"
+            },
+            {
+                "front": "How to translate 'Perguntei se ele estava feliz' (Verb of doubt)",
+                "back": "I asked WHETHER he was happy. (IF is accepted, but WHETHER is more formal)."
+            },
+            {
+                "front": "Punctuation Rule: Comma with IF",
+                "back": "Use a comma AFTER the IF clause if it comes first. (E.g., If it's cold, wear a coat.)"
+            },
+            {
+                "front": "Punctuation Rule: Comma with WHETHER",
+                "back": "A comma is usually not needed, unless separating WHETHER from a longer phrase."
+            },
+            {
+                "front": "Meaning of 'or not' adjacent to WHETHER",
+                "back": "If 'or not' comes immediately after WHETHER, 'IF' is strictly prohibited. (E.g., whether or not to invest)."
+            },
+            {
+                "front": "Translate: 'A única questão é se devemos esperar.' (Preposition + Doubt)",
+                "back": "The only question is about WHETHER we should wait. (WHETHER use after implied/explicit 'about')."
+            },
+            // ----------------------------------------------------
+            // 2. TRANSLATION EXERCISES (Portuguese to English) - UNCHANGED
+            // ----------------------------------------------------
+            {
+                "front": "TRADUZA: Se você for ao mercado, compre pão.",
+                "back": "If you go to the market, buy bread. (Condição simples: usa IF)."
+            },
+            {
+                "front": "TRADUZA: A questão é se ele virá ou não.",
+                "back": "The question is whether or not he will come. (Uso obrigatório de WHETHER, por causa do 'or not' adjacente)."
+            },
+            {
+                "front": "TRADUZA: Quero saber se devemos investir mais dinheiro.",
+                "back": "I want to know whether we should invest more money. (Dúvida. Whether é o mais formal, embora if seja comum.)"
+            },
+            {
+                "front": "TRADUZA: A validade da proposta depende de se assinarmos o contrato.",
+                "back": "The validity of the proposal depends on whether we sign the contract. (Uso obrigatório de WHETHER após a preposição 'on'/'de')."
+            },
+            {
+                "front": "TRADUZA: Não tenho certeza se vou aceitar o emprego.",
+                "back": "I'm not sure whether to accept the job. (Uso obrigatório de WHETHER antes do infinitivo 'to accept')."
+            },
+            {
+                "front": "TRADUZA: Se ele estivesse aqui, nos ajudaria.",
+                "back": "If he were here, he would help us. (Condição hipotética: usa IF)."
+            },
+            {
+                "front": "TRADUZA: O problema é se ele tem tempo.",
+                "back": "The problem is whether he has time. (Dúvida. Tradução literal 'o problema é' sugere WHETHER, mas IF também é aceito informalmente)."
+            },
+            {
+                "front": "TRADUZA: Se a empresa fechar é a grande notícia do dia.",
+                "back": "Whether the company closes is the big news of the day. (Uso obrigatório de WHETHER, pois a cláusula é o SUJEITO da frase)."
+            },
+            {
+                "front": "TRADUZA: Por favor, me avise se você for capaz de ir.",
+                "back": "Please let me know if you are able to go. (Simplesmente uma condição ou pedido de informação: IF é mais comum.)"
+            },
+            {
+                "front": "TRADUZA: Tivemos uma discussão sobre se devemos mudar a estratégia.",
+                "back": "We had a discussion about whether we should change the strategy. (Uso obrigatório de WHETHER após a preposição 'about'/'sobre')."
+            }
+        ];
+
+        let currentCardIndex = 0;
+        const totalCards = flashcards.length;
+
+        // DOM elements
+        const flashcardElement = document.getElementById('flashcard');
+        const frontTextElement = document.querySelector('#card-front .card-text');
+        const backTextElement = document.querySelector('#card-back .card-text');
+        const cardCounterElement = document.getElementById('card-counter');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const flipBtn = document.getElementById('flip-btn');
+
+        // --- Functions ---
+
+        function updateCardDisplay() {
+            const card = flashcards[currentCardIndex];
+            
+            // Set texts
+            frontTextElement.textContent = card.front;
+            backTextElement.textContent = card.back;
+            
+            // Update counter
+            cardCounterElement.textContent = `Card ${currentCardIndex + 1} of ${totalCards}`;
+            
+            // Update navigation button states
+            prevBtn.disabled = currentCardIndex === 0;
+            nextBtn.disabled = currentCardIndex === totalCards - 1;
+
+            // Ensure card is unflipped when loading new content
+            flashcardElement.classList.remove('flipped');
+        }
+
+        function flipCard() {
+            flashcardElement.classList.toggle('flipped');
+        }
+
+        function goToNextCard() {
+            if (currentCardIndex < totalCards - 1) {
+                currentCardIndex++;
+                updateCardDisplay();
+            }
+        }
+
+        function goToPrevCard() {
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+                updateCardDisplay();
+            }
+        }
+
+        // --- Event Listeners ---
+
+        window.onload = function() {
+            updateCardDisplay();
+            
+            // Click card to flip
+            flashcardElement.addEventListener('click', flipCard);
+            
+            // Button controls
+            flipBtn.addEventListener('click', flipCard);
+            nextBtn.addEventListener('click', goToNextCard);
+            prevBtn.addEventListener('click', goToPrevCard);
+        };
+    </script>
+</body>
+</html>
